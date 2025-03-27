@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Test Proctoring System</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            background-color: #f8f9fa;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        .proctoring-container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .video-container {
+            position: relative;
+            margin-bottom: 20px;
+            border: 3px solid #ddd;
+            border-radius: 8px;
+            overflow: hidden;
+        }
+        .video-feed {
+            width: 100%;
+            display: block;
+        }
+        .status-indicator {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            padding: 5px 10px;
+            border-radius: 20px;
+            font-weight: bold;
+            background-color: rgba(0, 0, 0, 0.6);
+            color: white;
+        }
+        .warning-container {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            height: 250px;
+            overflow-y: auto;
+        }
+        .warning-item {
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            border-radius: 4px;
+            background-color: #ffe6e6;
+            border-left: 4px solid #ff3333;
+        }
+        .action-buttons {
+            display: flex;
+            gap: 10px;
+            margin-top: 20px;
+        }
+        .status-active {
+            background-color: #28a745;
+        }
+        .status-terminated {
+            background-color: #dc3545;
+        }
+        .status-panel {
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        h1 {
+            color: #343a40;
+            margin-bottom: 20px;
+        }
+        h2 {
+            font-size: 1.5rem;
+            margin-bottom: 15px;
+            color: #495057;
+        }
+    </style>
+</head>
+<body>
+    <div class="proctoring-container">
+        <h1 class="text-center">Test Proctoring System</h1>
+        
+        <div class="row">
+            <div class="col-md-8">
+                <div class="video-container">
+                    <img src="{{ url_for('video_feed') }}" class="video-feed" alt="Video Feed">
+                    <div id="status-badge" class="status-indicator status-active">MONITORING</div>
+                </div>
+                
+                <div class="action-buttons">
+                    <button id="reset-btn" class="btn btn-warning">Reset Warnings</button>
+                    <button id="restart-btn" class="btn btn-primary">Restart Session</button>
+                    <button id="end-btn" class="btn btn-danger">End Session</button>
+                </div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="status-panel">
+                    <h2>Session Status</h2>
+                    <div class="mb-3">
+                        <strong>Warning Count:</strong> <span id="warning-count">0</span>/3
+                    </div>
+                    <div>
+                        <strong>Status:</strong> <span id="test-status">Active</span>
+                    </div>
+                    <div id="termination-reason" class="mt-2 text-danger" style="display: none;">
+                        <strong>Terminated:</strong> <span id="reason-text"></span>
+                    </div>
+                </div>
+                
+                <div class="warning-container">
+                    <h2>Warnings</h2>
+                    <div id="warnings-list">
+                        <!-- Warnings will be displayed here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const resetBtn = document.getElementById('reset-btn');
+            const restartBtn = document.getElementById('restart-btn');
+            const endBtn = document.getElementById('end-btn');
+            const warningsList = document.getElementById('warnings-list');
+            const warningCount = document.getElementById('warning-count');
+            const testStatus = document.getElementById('test-status');
+            const statusBadge = document.getElementById('status-badge');
+            const terminationReason = document.getElementById('termination-reason');
+            const reasonText = document.getElementById('reason-text');
+            
+            // Function to update status
+            function updateStatus() {
+                fetch('/status')
+                    .then(response => response.json())
+                    .then(data => {
+                        warningCount.textContent = data.warning_count;
+                        
+                        // Clear and update warnings
+                        warningsList.innerHTML = '';
+                        data.warnings.forEach(warning => {
+                            const warningEl = document.createElement('div');
+                            warningEl.className = 'warning-item';
+                            warningEl.textContent = warning;
+                            warningsList.appendChild(warningEl);
+                        });
+                        
+                        // Update status if terminated
+                        if (data.terminated) {
+                            testStatus.textContent = 'Terminated';
+                            statusBadge.textContent = 'TERMINATED';
+                            statusBadge.className = 'status-indicator status-terminated';
+                            terminationReason.style.display = 'block';
+                            reasonText.textContent = data.termination_reason;
+                        } else {
+                            testStatus.textContent = 'Active';
+                            statusBadge.textContent = 'MONITORING';
+                            statusBadge.className = 'status-indicator status-active';
+                            terminationReason.style.display = 'none';
+                        }
+                    })
+                    .catch(error => console.error('Error updating status:', error));
+            }
+            
+            // Reset warnings
+            resetBtn.addEventListener('click', function() {
+                fetch('/reset_warnings')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data.message);
+                        updateStatus();
+                    })
+                    .catch(error => console.error('Error resetting warnings:', error));
+            });
+            
+            // Restart session
+            restartBtn.addEventListener('click', function() {
+                fetch('/restart_session')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data.message);
+                        // Reload to refresh video feed
+                        window.location.reload();
+                    })
+                    .catch(error => console.error('Error restarting session:', error));
+            });
+            
+            // End session
+            endBtn.addEventListener('click', function() {
+                fetch('/end_session')
+                    .then(response => response.json())
+                    .then(data => {
+                        console.log(data.message);
+                        testStatus.textContent = 'Ended';
+                        statusBadge.textContent = 'ENDED';
+                        statusBadge.className = 'status-indicator status-terminated';
+                    })
+                    .catch(error => console.error('Error ending session:', error));
+            });
+            
+            // Update status every 2 seconds
+            setInterval(updateStatus, 2000);
+            
+            // Initial status update
+            updateStatus();
+        });
+    </script>
+</body>
+</html>
