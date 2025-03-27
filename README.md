@@ -157,8 +157,7 @@ We welcome contributions from developers, researchers, and security enthusiasts.
 
 ## 💬 Support
 
-For any issues, bugs, or feature requests, please open an issue on GitHub or contact us via email.
+For any issues, bugs, or pull requests, please open an issue on GitHub or contact me via email.
+kashishshah.work@gmail.com
 
----
 
-Feel free to modify and expand on this based on the specifics of your project!
